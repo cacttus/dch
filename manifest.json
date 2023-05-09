@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "dch",
+  "version": "1.0",
+  "description": "Simplifies aggregation of in-browser web content",
+  "permissions": [
+    "downloads"
+  ],
+  "background": {
+    "scripts": [
+      "shared.js",
+      "back.js"
+    ],
+    "persistent": true 
+  },
+  "commands": {
+    "saveAll": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+D"
+      }
+    },
+    "saveAllAs": {
+      "suggested_key": {
+        "default": "Shift+Alt+D"
+      }
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+      "shared.js",
+      "front.js"
+      ]
+    }
+  ]
+}
