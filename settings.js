@@ -3,11 +3,6 @@ init_script(() => {
 
   let g_cts = []
 
-  //let ta = document.getElementById("txtSettings")
-  // ta.oninput = () => {
-  //   this.style.height = 0;
-  //   this.style.height = (this.scrollHeight) + "px";
-  // }
   function disable_setting(ctob) {
     let pname = ctob.name
     let ct = document.getElementById(pname)
