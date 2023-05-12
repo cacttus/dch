@@ -10,6 +10,7 @@ function send(msg, data) {
   browser.runtime.sendMessage({ _msg: msg, _data: data }).then(handle_message, RPCError);
 }
 async function get_files(ele, files) {
+  msg("searching for files..")
   let start_time = new Date();
   if (ele != null) {
     let dir = 0
@@ -18,7 +19,7 @@ async function get_files(ele, files) {
     if (filter_tag(ele)) {
       count = 1
     }
-    else if (S.allow_global != null && S.allow_global) {
+    else if (S.enable_global) {
       ele = document.body
       dir = 1
     }
@@ -30,7 +31,7 @@ async function get_files(ele, files) {
 async function _get_files(ele, files, start_time, dir, depth, count) {
   if (ele != null) {
     let elapsed = (new Date()) - start_time;
-    if (S.query_timeout_ms != null && elapsed > S.query_timeout_ms) {
+    if (S.query_timeout_ms > 0 && elapsed > S.query_timeout_ms) {
       Raise("getFiles timed out")
     }
     vdbg("  ".repeat(Math.max(0, depth)) + ele.tagName + " (" + elapsed / 1000 + "s)")
@@ -51,10 +52,10 @@ async function _get_files(ele, files, start_time, dir, depth, count) {
   }
 }
 async function is_thumb(ele, files) {
-  if (ele.tagName.toLowerCase() === "img" && (S.thumb_search_enable != null && S.thumb_search_enable)) {
-    let p = find_parent_tag(ele, "a", (S.thumb_search_depth == null) ? 9999999 : S.thumb_search_depth)
+  if (ele.tagName.toLowerCase() === "img" && S.thumb_search_depth > 0) {
+    let p = find_parent_tag(ele, "a", S.thumb_search_depth)
     if (p != null) {
-      vdbg("Tag was considered thumbnail")
+      vdbg("Tag was a thumbnail")
       await check_tag(p, files)
       return true
     }
@@ -79,7 +80,7 @@ async function check_tag(ele, files) {
     fname = await filter_url(url, ele)
     Assert(fname != null && typeof fname === 'string')
     if (fname) {
-      vdbg("adding " + fname)
+      msg(fname)
       files.add(fname)
       return true
     }
@@ -88,7 +89,7 @@ async function check_tag(ele, files) {
 }
 function filter_tag(ele) {
   let tn = ele.tagName.toLowerCase()
-  return (S.filter_tags == null) || (S.filter_tags.indexOf(tn) > -1)
+  return (!S.filter_tags.length) || (S.filter_tags.indexOf(tn) > -1)
 }
 async function filter_url(url, tag) {
   let ret = ""
@@ -99,7 +100,7 @@ async function filter_url(url, tag) {
       if (isdebug() && isverbose()) {
         vdbg("url:" + url + "\n  host:" + urlhost(url) + "\n  ext:" + urlext(url))
       }
-      if (ext_isimg(ext) && (S.filter_img_size != null)) {
+      if (ext_isimg(ext) && (S.filter_img_size > 0)) {
         try {
           let sz = await get_img_size(url, tag)
           if (sz._width > S.filter_img_size && sz._height > S.filter_img_size) {
@@ -120,7 +121,7 @@ async function filter_url(url, tag) {
 async function handle_message(m) {
   if (m) {
     let hdr = "Server: "
-    vdbg(hdr+ JSON.stringify(m))
+    vdbg(hdr + JSON.stringify(m))
     switch (m._msg) {
       case Msg.msg: msg(hdr + m._data); break;
       case Msg.err: err(hdr + m._data); break;
@@ -189,7 +190,6 @@ init_script(() => {
       get_files(ele, files).then((elapsed) => {
         msg("Found " + files.size + " files in " + elapsed / 1000 + "s:")
         for (let f of files) {
-          msg("  " + f)
           save(f, e.shiftKey)
         }
       }, (e) => {

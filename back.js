@@ -69,7 +69,7 @@ init_script(() => {
   browser.runtime.onMessage.addListener(handle_message);
   browser.commands.onCommand.addListener((command) => {
     switch (command) {
-      case Msg.saveAll:  send(Msg.saveAll, ""); break;
+      case Msg.saveAll: send(Msg.saveAll, ""); break;
       case Msg.saveAllAs: send(Msg.saveAllAs, ""); break;
       default:
         err("invalid command " + JSON.stringify(command))
@@ -80,11 +80,11 @@ init_script(() => {
   });
 
   window.setInterval(async () => {
-    while ((pending.length > 0) && (S.max_concurrent_downloads != null || (active.size < S.max_concurrent_downloads))) {
+    while ((pending.length > 0) && (S.max_concurrent_downloads <= 0 || (active.size < S.max_concurrent_downloads))) {
       let dl = pending.splice(0, 1)[0]
 
       let nam = "" + dl._fn + " (" + dl._url + ")"
-      if (!isdebug() || (isdebug() && (S.debug_disable_download == null || !S.debug_disable_download))) {
+      if (!isdebug() || (isdebug() && !S.debug_disable_download)) {
         dbg(nam)
         let dlid = await browser.downloads.download({
           url: dl._url,
@@ -99,7 +99,7 @@ init_script(() => {
       else {
         wrn(nam + " (Download is disabled)")
       }
-      if (S.download_delay_ms != null) {
+      if (S.download_delay_ms > 0) {
         await sleep(S.download_delay_ms)
       }
 

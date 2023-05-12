@@ -3,27 +3,43 @@
 //========================================================================
 
 const c_app_name = browser.runtime.getManifest().name
+const c_app_version = browser.runtime.getManifest().version
 const c_image_exts = ['.apng', '.gif', '.ico', '.cur', '.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp', '.svg']
 
 //========================================================================
-// settings
 
-let S = {
+let _S = {
   debug: true,
   debug_verbose: false,
-  debug_disable_download: false, //only print dls to console 
-  allow_global: true, // if clicked item is not in filter_tags, save all items
-  thumb_search_enable: true, // search for <a> above <img> tags to prevent excessive loading of images
+  debug_disable_download: false,    // only print dls to console 
+  enable_global: true,              // if clicked item is not in filter_tags, save all items
+  enable_thumbnail_detection: true, // search for <a> above <img> tags to prevent excessive loading of images
   max_concurrent_downloads: 10,
-  thumb_search_depth: 1,
-  filter_img_size: 300, // this can be slow
-  //filter_host: ['media.host.com'], //save only URLs with these hosts/root
-  filter_tags: ['a', 'video', 'img', 'audio'], //save contents of these tags
+  thumb_search_depth: 1,            // # parents to search for <a> tag 
+  query_timeout_ms: 120 * (1000),   // timeout for all Image.Load(s) and tree parse
+  download_delay_ms: 0,             // 100 // prevent server flooding
+  filter_img_size: 300,             // this can be slow
+  filter_host: [],                  // save only URLs with these hosts/root
+  filter_tags: ['a', 'video', 'img', 'audio'],//save contents of these tags
   filter_ext: ['.apng', '.gif', '.ico', '.cur', '.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp', '.svg',
     '.mp4', '.webm', '.ogg',
     '.flac', '.mpg', '.mpeg', '.m4v', '.mov', '.3gp', '.mp3'], //save files with these extensions
-  query_timeout_ms: 120 * (1000), // timeout for all Image.Load(s) and tree parse
-  download_delay_ms: 0, //100 // prevent server flooding
+}
+let S = null
+async function load_settings() {
+  msg("loading settings")
+  S = await browser.storage.local.get()
+  if (Object.keys(S).length === 0 && S.constructor === Object) {
+    msg("initializing settings")
+    S = JSON.parse(JSON.stringify(_S))
+  }
+  msg("settings=" + JSON.stringify(S))
+}
+async function save_settings() {
+  msg("saving settings")
+  let st = JSON.stringify(S)
+  dbg("settings=" + st)
+  await browser.storage.local.set(S)
 }
 
 //========================================================================
@@ -41,47 +57,35 @@ const Msg = {
 
 //========================================================================
 
+async function _init_script(fn) {
+  await load_settings()
+ 
+  let sn = ""
+  if (document.currentScript != null) {
+    sn = document.currentScript.src
+  }
+  else {
+    sn = document.location
+  }
+  dbg("Initializing " + c_app_name + " (" + sn + ")")
+  dbg("  strict mode: " + (isstrict() ? "on" : "off"))
+  dbg("  debug: " + (isdebug() ? "on" : "off"))
+  dbg("  verbose: " + (isverbose() ? "on" : "off"))
+  fn()
+}
 function init_script(fn) {
-  try {
-    let sn = ""
-    if (document.currentScript != null) {
-      sn = document.currentScript.src
+  window.onload = async () => {
+    try {
+      await _init_script(fn)
+    } catch (e) {
+      err(e)
     }
-    else {
-      sn = document.location
-    }
-    dbg("Initializing " + c_app_name + " (" + sn + ")")
-    dbg("  strict mode: " + (isstrict() ? "on" : "off"))
-
-    //check config
-    let suff = ", no files will be added (to disable comment out or set null)"
-    if (S.filter_ext != null && S.filter_ext.length === 0) {
-      wrn("Filter extensions was empty" + suff)
-    }
-    if (S.filter_host != null && S.filter_host.length === 0) {
-      wrn("Filter hosts was empty" + suff)
-    }
-    if (S.filter_tags != null && S.filter_tags <= 0) {
-      wrn("Filter tags was empty" + suff)
-    }
-    if (S.filter_img_size != null && S.filter_img_size <= 0) {
-      wrn("Filter imge size was <=0" + suff)
-    }
-
-    window.onload = () => {
-      try {
-        fn()
-      } catch (e) {
-        err(e)
-      }
-    }
-  } catch (e) {
-    err(e)
   }
 }
+
 function isstrict() { return (function () { return !this; })() }
-function isdebug() { return S.debug != null && S.debug }
-function isverbose() { return S.debug_verbose != null && S.debug_verbose }
+function isdebug() { return (S == null) || S.debug }
+function isverbose() { return (S == null) || S.debug_verbose }
 function msg(s) { console.log(s) }
 function err(s) { console.error(s) }
 function wrn(s) { console.warn(s) }
@@ -96,10 +100,7 @@ function Raise(msg) {
 }
 function Assert(x, msg = "") {
   if (!x) {
-    let aa = arguments.callee.toString().match(/\(.*?\)/)[0];
-    console.log("aa=" + aa)
-
-    let txt = "Assertion failed '" + Object.keys(x) + "'" + msg ? ": " + msg : ""
+    let txt = "Assertion failed" + (msg ? ": " + msg : "")
     Raise(txt)
   }
 }
@@ -148,11 +149,11 @@ function get_img_size(url, tag = null) {
   })
 }
 function valid_ext(ext) {
-  return (S.filter_ext == null) || S.filter_ext.indexOf(ext) > -1
+  return (!S.filter_ext.length) || S.filter_ext.indexOf(ext) > -1
 }
 function valid_host(url) {
   let ret = false
-  if (S.filter_host != null) {
+  if (S.filter_host.length) {
     let h = urlhost(url)
     if (h) {
       ret = (S.filter_host.indexOf(h) > -1);

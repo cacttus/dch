@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Settings</title>
+  <meta charset="utf-8" />
+</head>
+
+<body style="padding:10px">
+
+  <style>
+    div,
+    textarea,
+    input {
+      width: 100%;
+      height: auto;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    span {
+      width: auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    input {
+      width: auto;
+      display: inline;
+    }
+  </style>
+  <div id="message">&nbsp;</div>
+  <div>
+    <div id="controls" style="width:auto;">
+    </div>
+    <span style="float:left;">
+      <input id="btnLoad" type="button" value="load" />
+      <input id="btnSave" type="button" value="save" />
+    </span>
+    <span style="float:right;">
+      <input id="btnDefault" type="button" value="default" />
+    </span>
+  </div>
+  <!-- <textarea id="txtSettings" ></textarea> -->
+  <!-- <label>Border color <input type="text" id="color" name="color" /></label>
+      <button type="submit">Save</button> -->
+
+  <script src="shared.js"></script>
+  <script src="settings.js"></script>
+
+</body>
+
+</html>
